@@ -1,0 +1,50 @@
+name: Build APK - Release Genetik
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Nama Project'
+        required: true
+        default: 'MyAppGenetik'
+
+jobs:
+  build-release-genetik:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build APK Release (Split ABI)
+        run: flutter build apk --release --split-per-abi
+
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk output/${{ github.event.inputs.project_name }}-arm32-release.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk output/${{ github.event.inputs.project_name }}-arm64-release.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk output/${{ github.event.inputs.project_name }}-x86-release.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.project_name }}-release-genetik
+          path: output/*.apk
+          retention-days: 7
